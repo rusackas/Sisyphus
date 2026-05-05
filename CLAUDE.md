@@ -1,4 +1,4 @@
-# Custodial Engineer — context for Claude Code sessions
+# Sisyphus — context for Claude Code sessions
 
 Welcome. This file is loaded into every Claude Code session that
 runs inside this repo (including Ad Hoc Tasks spawned by the app's
@@ -24,21 +24,24 @@ lessons live.
 
 ## What this is
 
-Custodial Engineer ("CE") is a personal repo-maintainer toolkit
-that triages and acts on PRs and Issues across watched GitHub
-repos. A FastAPI + Jinja + HTMX web app surfaces queues of cards;
-each card has a mechanical action menu plus a Claude-authored
-narrative proposal. Click a button → either a one-shot side-effect
-(via `gh`) or a Claude Agent SDK session that does worktree work
-(rebase, fix, draft a comment for review, etc.). The package is
-called `repobot` for legacy reasons; the product is "Custodial
-Engineer."
+Sisyphus is a personal repo-maintainer toolkit that triages and
+acts on PRs and Issues across watched GitHub repos. A FastAPI +
+Jinja + HTMX web app surfaces queues of cards; each card has a
+mechanical action menu plus a Claude-authored narrative proposal.
+Click a button → either a one-shot side-effect (via `gh`) or a
+Claude Agent SDK session that does worktree work (rebase, fix,
+draft a comment for review, etc.). The Python package is called
+`repobot` for legacy reasons (it's been through two product
+renames — first `repobot`, then `CustodialEngineer`, now
+`Sisyphus`); the package name stays put because every import path
+would otherwise ripple, and renaming code that nobody outside the
+repo imports is churn for churn's sake.
 
 The user is **a maintainer reading and approving the bot's
 suggestions** — not a passive consumer. Every public-facing side
 effect (comments, approvals, closes, PR descriptions) routes
 through a review modal where the user edits the body before it's
-posted. CE drafts; the maintainer ships.
+posted. Sisyphus drafts; the maintainer ships.
 
 ## Invariants — read these first
 
@@ -252,10 +255,10 @@ curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8000/
 tail -30 /tmp/repobot-server.log | grep -iE 'error|trace|exception'
 ```
 
-There is also an in-app `update CE` button (header, next to the
-brand) that does `git pull --ff-only origin main` and re-execs
+There is also an in-app `update sisyphus` button (header, next to
+the brand) that does `git pull --ff-only origin main` and re-execs
 the server. Aborts on dirty working tree. Use it after merging a
-CE PR you've been reviewing in this same instance.
+Sisyphus PR you've been reviewing in this same instance.
 
 ### Dry run
 

@@ -1,4 +1,4 @@
-# Custodial Engineer
+# Sisyphus
 
 A local kanban-style maintenance tool for a GitHub repo. Reads PRs
 and issues into per-queue columns, runs headless
@@ -216,7 +216,10 @@ Claude Pro / Max OAuth login.
 
 ## Notes
 
-- Python package name is `repobot` (unchanged) — the GitHub repo
-  was renamed to `CustodialEngineer` when it went public.
+- Python package name is `repobot` (unchanged across two product
+  renames — `repobot` → `CustodialEngineer` → `Sisyphus`). The
+  package stays put because every import path would otherwise
+  ripple, and renaming code that nobody outside the repo imports
+  would be churn for churn's sake.
 - `ANTHROPIC_API_KEY` is intentionally scrubbed from the subprocess
   env to keep Claude usage on the OAuth subscription.

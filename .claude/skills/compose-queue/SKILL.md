@@ -1,6 +1,6 @@
 ---
 name: compose-queue
-description: Translate a natural-language description of a queue into a valid Custodial Engineer queue YAML block. Works for both creating a new queue from scratch and editing an existing one. Emits a single minimal YAML block the user can review before saving.
+description: Translate a natural-language description of a queue into a valid Sisyphus queue YAML block. Works for both creating a new queue from scratch and editing an existing one. Emits a single minimal YAML block the user can review before saving.
 worktree_required: false
 ---
 

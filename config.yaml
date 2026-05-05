@@ -1,5 +1,5 @@
 repos:
-  # Registry of repos this Custodial Engineer instance can act on.
+  # Registry of repos this Sisyphus instance can act on.
   # Queues reference an entry by `id` via `repo: <id>`; the Tasks
   # board lets you pick from these in the create form. Add a new
   # entry here before pointing a queue or task at a new repo.
@@ -7,10 +7,10 @@ repos:
     owner: apache
     name: superset
     display_name: Apache Superset
-  - id: ce
+  - id: sisyphus
     owner: rusackas
-    name: CustodialEngineer
-    display_name: Custodial Engineer
+    name: Sisyphus
+    display_name: Sisyphus
   - id: preset-marketing
     owner: preset-io
     name: preset-marketing-website
@@ -136,8 +136,8 @@ queues:
       ci_status: true
       merge_state: true
       review_threads: true
-  - id: custodial-engineer-prs
-    title: Custodial Engineer PRs
+  - id: sisyphus-prs
+    title: Sisyphus PRs
     max_in_flight: 10
     query:
       state: open
@@ -154,7 +154,7 @@ queues:
       ci_status: true
       merge_state: true
       review_threads: true
-    repo: ce
+    repo: sisyphus
 
   - id: stale-issues
     title: Stale Issues

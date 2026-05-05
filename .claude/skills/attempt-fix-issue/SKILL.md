@@ -1,6 +1,6 @@
 ---
 name: attempt-fix-issue
-description: Try to implement a fix for one open issue from scratch. Worktree is checked out on a fresh `ce/issue-{N}` branch off default. On success, push and open a PR with `Closes #N` so the link auto-resolves. Bails to needs_human if the issue isn't actionable from code alone.
+description: Try to implement a fix for one open issue from scratch. Worktree is checked out on a fresh `sisyphus/issue-{N}` branch off default. On success, push and open a PR with `Closes #N` so the link auto-resolves. Bails to needs_human if the issue isn't actionable from code alone.
 worktree_required: true
 ---
 
@@ -8,7 +8,7 @@ worktree_required: true
 
 **Inputs**: `issue.{owner, name, number, title, body, labels,
 comments, author_login, comments_count}`, `worktree_path` (the
-repo checked out on `ce/issue-{N}`, branched off the default),
+repo checked out on `sisyphus/issue-{N}`, branched off the default),
 `identity.github_username`, `dry_run`.
 
 The user clicked "attempt-fix-issue" because the issue looks
@@ -93,7 +93,7 @@ Push the branch:
 git push -u origin HEAD
 ```
 
-(The worktree is on `ce/issue-{N}`; HEAD pushes that branch up.)
+(The worktree is on `sisyphus/issue-{N}`; HEAD pushes that branch up.)
 
 ### 6. Draft the PR title + body — DO NOT run `gh pr create`
 
@@ -133,7 +133,7 @@ the PR description that *would* be created. Report
   "message": "one-sentence summary",
   "proposed_pr_title": "Fix: <one-line description>",
   "proposed_pr_body": "Closes #N\n\n## Summary\n- bullet\n\n## Test plan\n- ...\n\n🤖 Generated with [Claude Code](...)",
-  "head_branch": "ce/issue-{issue.number}",
+  "head_branch": "sisyphus/issue-{issue.number}",
   "commit_sha": "abc1234",
   "files_changed": ["path/one.py", "path/two.test.py"],
   "needs_human_reason": "when status is needs_human, why",

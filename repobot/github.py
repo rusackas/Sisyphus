@@ -30,7 +30,7 @@ LIST_FIELDS_ISSUE = (
 # know their queue). Every gh helper reads from it. Falls back to
 # config.yaml's top-level `repo` when unset.
 _current_repo_slug: ContextVar[str | None] = ContextVar(
-    "custodial.repo_slug", default=None)
+    "sisyphus.repo_slug", default=None)
 
 
 def _normalize_repo_entry(raw: dict) -> dict:

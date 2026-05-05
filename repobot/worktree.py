@@ -92,8 +92,8 @@ def ensure_worktree(pr_number: int, head_ref: str,
 def issue_worktree_path_for(issue_number: int) -> Path:
     """Issues live under a separate `issues/` subtree to keep them
     visually distinct from PR worktrees in the workspace dir, and
-    because the branch namespace differs (`ce/issue-{N}` vs.
-    `ce/pr-{N}` — bot-owned, never collides with user branches)."""
+    because the branch namespace differs (`sisyphus/issue-{N}` vs.
+    `sisyphus/pr-{N}` — bot-owned, never collides with user branches)."""
     return WORKSPACE_DIR / "issues" / f"issue-{issue_number}"
 
 
@@ -101,7 +101,7 @@ def ensure_issue_worktree(issue_number: int, repo_slug: str | None = None
                           ) -> Path:
     """Create (or refresh) a worktree for an issue-driven fix.
 
-    Branched off the repo's default branch via `ce/issue-{N}`. Unlike
+    Branched off the repo's default branch via `sisyphus/issue-{N}`. Unlike
     PR worktrees (which checkout `refs/pull/{N}/head`), issue
     worktrees start from a clean default-branch tip — the skill is
     going to make the fix from scratch and push to a new head.
@@ -131,7 +131,7 @@ def ensure_issue_worktree(issue_number: int, repo_slug: str | None = None
         default_branch = "main"
 
     target = issue_worktree_path_for(issue_number)
-    branch = f"ce/issue-{issue_number}"
+    branch = f"sisyphus/issue-{issue_number}"
     target.parent.mkdir(parents=True, exist_ok=True)
 
     _git("fetch", "origin", default_branch, cwd=clone_path)

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Custodial Engineer</title>
+  <title>Sisyphus</title>
   <link rel="stylesheet" href="/static/style.css" />
   <script>
     // Apply the saved theme before first paint — avoids a flash of
@@ -117,11 +117,11 @@
   <header class="app-header">
     <div class="app-header-row app-header-brand-row">
       <h1 class="app-brand">
-        <span class="app-brand-mark" role="img" aria-label="Custodial Engineer">🧹</span>
-        <span class="app-brand-text">custodial<span class="app-brand-dot">·</span>engineer</span>
+        <span class="app-brand-mark" role="img" aria-label="Sisyphus">🪨</span>
+        <span class="app-brand-text">sisyphus</span>
         {% if dry_run %}<span class="app-brand-flag" title="Actions are logged instead of executed. Flip actions.dry_run in config.yaml when you trust the flow.">dry run</span>{% endif %}
       </h1>
-      {# Self-update: pull latest origin/main on the CE repo this
+      {# Self-update: pull latest origin/main on the Sisyphus repo this
          server is running from, then re-exec the process so the
          new code loads. Aborts if the working tree is dirty or the
          pull is non-ff. SSE clients reconnect automatically after
@@ -130,8 +130,8 @@
             class="app-self-update-form"
             onsubmit="return confirm('Pull origin/main and restart the server? Aborts if the working tree is dirty.');">
         <button type="submit" class="app-self-update"
-                title="git pull --ff-only origin/main on the CE repo, then re-exec the server. Use after merging a CE feedback PR to consume the new code without leaving the app.">
-          {{ icon('rocket', size=12) }} update CE
+                title="git pull --ff-only origin/main on the Sisyphus repo, then re-exec the server. Use after merging a Sisyphus feedback PR to consume the new code without leaving the app.">
+          {{ icon('rocket', size=12) }} update sisyphus
         </button>
       </form>
     </div>
@@ -1432,7 +1432,7 @@
   {# Feedback modal — opened by the per-card "?" button. The user
      describes what's wrong with the card's triage; on submit we POST
      to /queues/{q}/items/{i}/spawn-feedback-task with the prompt,
-     which spawns an Ad Hoc Task on the CE repo. #}
+     which spawns an Ad Hoc Task on the Sisyphus repo. #}
   <div id="feedback-modal" class="modal" aria-hidden="true">
     <div class="modal-backdrop" data-close-feedback></div>
     <div class="modal-body modal-body-narrow" role="dialog" aria-modal="true">
@@ -1447,7 +1447,7 @@
       <div class="comment-modal-help">
         Describe what's wrong with this card's triage — the action
         menu, the proposal text, missing buttons, anything. Claude
-        opens an Ad Hoc Task on the Custodial Engineer repo with
+        opens an Ad Hoc Task on the Sisyphus repo with
         this card's full context (raw signals, triage notes, action
         menu, last result, recent history) plus your message, then
         investigates the relevant skill prompts / triage logic and
@@ -2365,7 +2365,7 @@
     // describes what's wrong; on confirm we re-submit the form
     // with the prompt as a hidden field so it lands at the
     // /spawn-feedback-task endpoint, which spawns an Ad Hoc Task
-    // on the CE repo with the card's full context.
+    // on the Sisyphus repo with the card's full context.
     const feedbackModal = document.getElementById('feedback-modal');
     const feedbackModalPr = document.getElementById('feedback-modal-pr');
     const feedbackModalTextarea = document.getElementById('feedback-modal-textarea');

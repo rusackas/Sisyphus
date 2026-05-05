@@ -60,10 +60,10 @@
                       {% endif %}
                       {# Per-card feedback hook: opens the feedback
                          modal pre-populated with this card's context.
-                         On submit, spawns an Ad Hoc Task on the CE
-                         repo so a Claude Code session can investigate
-                         the user's complaint and open a PR with
-                         proposed fixes. #}
+                         On submit, spawns an Ad Hoc Task on the
+                         Sisyphus repo so a Claude Code session can
+                         investigate the user's complaint and open a
+                         PR with proposed fixes. #}
                       <form method="post"
                             action="/queues/{{ queue.id }}/items/{{ item.id }}/spawn-feedback-task"
                             class="card-feedback-form"
@@ -73,7 +73,7 @@
                             data-card-state="{{ st }}"
                             data-queue-label="{{ queue.label or queue.id }}">
                         <button type="submit" class="card-feedback"
-                                title="Tell Claude what's wrong with this card's triage. Spawns a task on the CE repo with the card's full context + your prompt; Claude opens a PR with proposed fixes.">?</button>
+                                title="Tell Claude what's wrong with this card's triage. Spawns a task on the Sisyphus repo with the card's full context + your prompt; Claude opens a PR with proposed fixes.">?</button>
                       </form>
                     </div>
                   </div>

@@ -8,7 +8,7 @@ worktree_required: true
 
 The user dropped a free-form prompt into the Tasks board and picked
 a repo. You're already `cd`'d into a fresh worktree at
-`workspace/tasks/task-{task.id}/` on branch `ce/task-{task.id}`
+`workspasisyphus/tasks/task-{task.id}/` on branch `sisyphus/task-{task.id}`
 branched off the repo's default. No PR exists yet.
 
 ## Inputs (runtime context)
@@ -19,7 +19,7 @@ branched off the repo's default. No PR exists yet.
 - `task.task_type` — one of `auto | question | issue | pr`.
 - `repo.owner`, `repo.name`, `repo.slug` — the repo you're working
   against.
-- `branch` — the local branch you're on (`ce/task-{task.id}`).
+- `branch` — the local branch you're on (`sisyphus/task-{task.id}`).
 - `dry_run` — if true, skip any side-effecting `gh`/`git push` steps;
   log what you would have done.
 
@@ -111,7 +111,7 @@ Goal: implement the change, land it on the branch, push, open a PR.
    touched files; amend the commit if auto-fixers rewrote anything.
 6. Push (unless dry_run):
    ```
-   git push --set-upstream origin HEAD:ce/task-{task.id}
+   git push --set-upstream origin HEAD:sisyphus/task-{task.id}
    ```
 7. Open the PR (unless dry_run):
    ```
@@ -119,7 +119,7 @@ Goal: implement the change, land it on the branch, push, open a PR.
      --repo {repo.owner}/{repo.name} \
      --title "<task title>" \
      --body "<PR body: brief rationale + ref to the task>" \
-     --head ce/task-{task.id}
+     --head sisyphus/task-{task.id}
    ```
 
 Emit:
@@ -162,7 +162,7 @@ re-running the task.
 ### Worktree / branch / repo scope
 
 - Never touch files outside the worktree.
-- Never push to branches other than `ce/task-{task.id}`.
+- Never push to branches other than `sisyphus/task-{task.id}`.
 - Never open issues or PRs on repos other than `{repo.owner}/{repo.name}`.
 
 ### Public-mutation authorization

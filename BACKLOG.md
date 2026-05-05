@@ -17,10 +17,42 @@ line. No ceremony — this isn't a roadmap.
 
 ## Active
 
+- **Named feed templates with bundled `initialPrompt`** — line-cook
+  (rusackas/line-cook, `line-chef-initial-setup` branch) had a
+  `FEED_TEMPLATES` map: named GitHub query templates (newIssues,
+  stalePRs, conflictedPRs, staleIssues, popularDiscussions) each
+  carrying the query type (REST/GraphQL), params, and an
+  `initialPrompt` string seeding the chef's first message. Sisyphus has
+  the query mechanics in `github.py` and queue config in
+  `config.yaml`, but no "named feed → prompt" pairing. Worth adding
+  to `config.yaml` schema so each queue can carry a default
+  `initial_prompt` that seeds triage/action skill calls.
+  (Salvaged from line-cook 2026-05-01.)
+
+- **Explicit `approved` gate before AI work** — line-cook's task
+  state machine had `queued → approved → in_progress`, requiring a
+  human to explicitly approve a task before a chef touched it.
+  Sisyphus currently goes straight to work on click. Useful if it
+  ever grows
+  a backlog/queue-preview mode where you triage a batch first and
+  then let sessions drain the approved items. Maps to the Tinder-
+  swipe UX from the line-cook vision. (Salvaged from line-cook
+  2026-05-01.)
+
+- **`Approval` entity schema for public actions** — line-cook
+  defined a formal `Approval` record (taskId, chefId, actionType,
+  actionPayload, status: pending/approved/rejected, reviewedAt) for
+  every proposed GitHub action (comment, PR, commit). Sisyphus
+  handles this today via the review modal + `notes.*_comment`
+  triage fields, but without a persistent audit trail. If it ever
+  gets a proper DB
+  layer or web UI, this schema is a solid starting point for the
+  approval log. (Salvaged from line-cook 2026-05-01.)
+
 - **Decouple session pool from web process** — web restart
   currently kills all in-flight Claude sessions because
   `ClaudeSDKClient` spawns a child under uvicorn. Split into a
-  long-running `custodial-worker` process that owns the session
+  long-running `sisyphus-worker` process that owns the session
   pool, talking to the web app over a local socket / HTTP. Fat
   benefit: restart web without losing sessions; transcripts
   persist naturally. Intermediate option: `start_new_session=True`

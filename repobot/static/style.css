@@ -5365,7 +5365,7 @@ button.card-feedback:hover {
 }
 
 /* Header self-update button — sits next to the brand. Quietly
-   styled to stay out of the way; the rocket icon + "update CE"
+   styled to stay out of the way; the rocket icon + "update sisyphus"
    label hint at "ship the new code now". Confirms via JS prompt
    before submit so an accidental click doesn't restart the
    server. */

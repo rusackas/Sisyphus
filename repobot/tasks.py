@@ -3,8 +3,8 @@
 A "task" is a free-form prompt the user wants Claude to work on
 against one of the configured repos. Unlike queue items, tasks are
 push-driven (user creates them; nothing pulls them from GitHub) and
-live in their own worktree at `workspace/tasks/task-{id}/` on a
-bot-owned branch `ce/task-{id}` branched off the repo's default.
+live in their own worktree at `workspasisyphus/tasks/task-{id}/` on a
+bot-owned branch `sisyphus/task-{id}` branched off the repo's default.
 
 Stored in the same state file as queues, under a top-level `tasks`
 key:
@@ -13,13 +13,13 @@ key:
     "queues": {...},
     "tasks": {
       "items": [
-        {"id": 1, "repo_id": "ce", "prompt": "fix X",
+        {"id": 1, "repo_id": "sisyphus", "prompt": "fix X",
          "task_type": "pr", "status": "in_progress",
          "session_id": "...", "created_at": "...",
          "title": "...",         # optional, skill-assigned
          "last_result": {...},   # skill's final emission
          "pr_url": "...",        # set when the skill opens a PR
-         "branch": "ce/task-1"}
+         "branch": "sisyphus/task-1"}
       ],
       "next_id": 2
     }
@@ -92,7 +92,7 @@ def create_task(repo_id: str, prompt: str,
             "status": "in_progress",
             "session_id": None,
             "created_at": _now(),
-            "branch": f"ce/task-{tid}",
+            "branch": f"sisyphus/task-{tid}",
         }
         t["items"].append(record)
         t["next_id"] = tid + 1
@@ -171,7 +171,7 @@ def _default_branch(clone_path: Path) -> str:
 
 def ensure_task_worktree(task_id: int, repo_id: str) -> Path:
     """Create (or refresh) a worktree for a task at
-    `workspace/tasks/task-{id}`, checked out on `ce/task-{id}`
+    `workspasisyphus/tasks/task-{id}`, checked out on `sisyphus/task-{id}`
     branched off the repo's default. Ensures the base clone exists
     first via `workspace.ensure_repo`.
     """
@@ -184,7 +184,7 @@ def ensure_task_worktree(task_id: int, repo_id: str) -> Path:
     clone_path = WORKSPACE_DIR / repo["name"]
     wt_path = task_worktree_path(task_id)
     wt_path.parent.mkdir(parents=True, exist_ok=True)
-    branch = f"ce/task-{task_id}"
+    branch = f"sisyphus/task-{task_id}"
     default_branch = _default_branch(clone_path)
 
     def _git(*args: str) -> None:
@@ -275,7 +275,7 @@ def dispatch_task(task_id: int) -> str:
             "name": repo["name"],
             "slug": repo["slug"],
         },
-        "branch": task.get("branch") or f"ce/task-{task_id}",
+        "branch": task.get("branch") or f"sisyphus/task-{task_id}",
         "dry_run": dry_run,
     }
 

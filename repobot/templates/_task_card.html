@@ -19,7 +19,7 @@
           </span>
           {% if task.commit_sha %}
             <span class="task-card-sha tip"
-                  data-tip="Commit {{ task.commit_sha }} on {{ task.branch or 'ce/task-' ~ task.id }}">
+                  data-tip="Commit {{ task.commit_sha }} on {{ task.branch or 'sisyphus/task-' ~ task.id }}">
               {{ task.commit_sha[:7] }}
             </span>
           {% endif %}
