@@ -6,6 +6,11 @@ line. No ceremony — this isn't a roadmap.
 
 ## Recently done
 
+- ~~Repair venv shebangs after folder rename — recreated `.venv`
+  via `python3 -m venv` after the `CustodialEngineer` → `Sisyphus`
+  rename; pip / uvicorn / etc. now have correct shebangs at
+  `/Users/evan_1/GitHub/Sisyphus/.venv/bin/python3`.~~ 2026-05-05
+
 - ~~Multi-theme system — full CSS-variable tokenization (palettes
   split from base tokens for typography/radii/motion/elevation).
   Four palettes: `paper` (default warm-cream light), `blueprint`
@@ -60,12 +65,6 @@ line. No ceremony — this isn't a roadmap.
   writing progress to a JSONL file. (Proposed 2026-04-22 —
   potentially 1–2 sessions of work for the full refactor; the
   intermediate version might fit in one.)
-
-- **Repair venv shebangs after folder rename** — `.venv/bin/pip`,
-  `.venv/bin/uvicorn`, etc. still have `#!/Users/evan_1/GitHub/repobot/.venv/bin/python3`
-  baked in. `python3 -m <x>` works as a workaround; the proper fix
-  is to recreate the venv or run `virtualenv --upgrade-embed-wheels`.
-  (Proposed 2026-04-22.)
 
 - **Split button for PR preview + GitHub** — current drawer trigger
   (click `#NNNN` → drawer, ⌘-click → GitHub) is unintuitive for
