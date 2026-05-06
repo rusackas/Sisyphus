@@ -48,11 +48,16 @@ def _claude_auth_check() -> Check:
                      message="Credentials file present at ~/.claude/.credentials.json")
 
     if os.uname().sysname == "Darwin":
-        rc, _, _ = _run(["security", "find-generic-password",
-                          "-s", "Claude Code"], timeout=3)
-        if rc == 0:
-            return Check(id="claude_auth", label="Claude OAuth", ok=True,
-                         message="Credentials in macOS Keychain (service: Claude Code)")
+        # Claude Code stores OAuth as a generic-password entry under
+        # service "Claude Code-credentials" on macOS. Older builds
+        # used "Claude Code" — check both so we don't false-negative
+        # on either install vintage.
+        for service in ("Claude Code-credentials", "Claude Code"):
+            rc, _, _ = _run(["security", "find-generic-password",
+                              "-s", service], timeout=3)
+            if rc == 0:
+                return Check(id="claude_auth", label="Claude OAuth", ok=True,
+                             message=f"Credentials in macOS Keychain (service: {service})")
 
     return Check(
         id="claude_auth", label="Claude OAuth", ok=False,
