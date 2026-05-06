@@ -282,10 +282,21 @@ def mechanical_triage(item: dict) -> tuple[str, list[str]]:
     bot_threads = _bot_threads_resolvable(raw)
 
     if mergeable == "CONFLICTING":
-        msg = "Merge conflicts detected. Post `@dependabot rebase`; if that fails, rebase manually."
-        actions = ["dependabot-rebase", "rebase", "close"]
+        # `dependabot-rebase` and `dependabot-recreate` are the
+        # natural escalation pair: try a rebase first; fall back to
+        # recreate when the bot refuses (typical reason: branch was
+        # edited by someone other than Dependabot) or when a prior
+        # rebase has already been asked. Surface both so the user
+        # can pick without re-triaging.
+        msg = ("Merge conflicts detected. Post `@dependabot rebase` "
+               "first; if the bot refuses (branch edited externally) "
+               "or has already been asked, escalate to "
+               "`@dependabot recreate`. Manual `rebase` is the "
+               "fallback when neither helps.")
+        actions = ["dependabot-rebase", "dependabot-recreate",
+                   "rebase", "close"]
         if bot_threads:
-            actions.insert(1, "resolve-bot-threads")
+            actions.insert(2, "resolve-bot-threads")
         return msg, actions
 
     if ci == "passing" and mergeable == "MERGEABLE":
