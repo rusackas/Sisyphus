@@ -10,6 +10,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from . import config_checks as _config_checks
 from . import github, icons as _icons, inbox as _inbox, markdown as md, sessions, worktree
 from .actions import (
     CONTINUE_NUDGE,
@@ -467,6 +468,7 @@ def index(request: Request):
             "queue_repo_ids": {q["id"]: github.queue_repo_id(q)
                                for q in queues_cfg},
             "triage_skills": _list_triage_skills(),
+            "config_status": _config_checks.summary(),
         },
     )
 
@@ -2276,6 +2278,15 @@ def spawn_feedback_task(request: Request, queue_id: str, item_id: int,
 # the user can merge a PR via the tool and immediately consume the
 # new code. `git pull --ff-only` so local edits abort the update
 # instead of being silently overwritten.
+@app.get("/admin/config-status", response_class=JSONResponse)
+def admin_config_status():
+    """Run every registered config check and return a summary. Used
+    by the header "config needed" banner — both for the initial
+    page render (via Jinja context) and for the modal's "Recheck"
+    button (via fetch). Cheap; safe to call as often as you like."""
+    return JSONResponse(_config_checks.summary())
+
+
 @app.post("/admin/self-update")
 def admin_self_update(request: Request):
     """Run `git pull --ff-only` against origin/main on the Sisyphus

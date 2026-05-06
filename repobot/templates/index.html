@@ -121,6 +121,19 @@
         <span class="app-brand-text">sisyphus</span>
         {% if dry_run %}<span class="app-brand-flag" title="Actions are logged instead of executed. Flip actions.dry_run in config.yaml when you trust the flow.">dry run</span>{% endif %}
       </h1>
+      {# Config-needed banner: renders only when one or more
+         config checks (auth, GH, MCP, etc.) report an issue.
+         Click → opens a modal listing each problem with its
+         remediation steps. Hidden completely when everything's
+         green so it's invisible 99% of the time. #}
+      {% if config_status and config_status.any_failing %}
+        <button type="button" class="app-config-needed"
+                data-open-config-modal
+                title="One or more config checks are failing. Click for details and how to fix.">
+          {{ icon('alert', size=12) }} config needed
+          <span class="app-config-needed-badge">{{ config_status.fail_count }}</span>
+        </button>
+      {% endif %}
       {# Self-update: pull latest origin/main on the Sisyphus repo this
          server is running from, then re-exec the process so the
          new code loads. Aborts if the working tree is dirty or the
@@ -1466,6 +1479,33 @@
     </div>
   </div>
 
+  {# Config-status modal — listed by /admin/config-status. Each row
+     is one check (auth, GH, MCP, …) with a status icon + message
+     + remediation steps. "Recheck" re-runs the checks server-side
+     and re-renders this list inline; "Close" dismisses. The header
+     "config needed" button only appears when any check is failing,
+     so this modal is normally only opened deliberately. #}
+  <div id="config-modal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-config></div>
+    <div class="modal-body modal-body-narrow" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <div>
+          <h3>Config status</h3>
+          <div class="modal-pr">Each check below reports whether a piece of the Sisyphus runtime is set up. Failing checks block the actions that depend on them.</div>
+        </div>
+        <button type="button" class="modal-close" data-close-config
+                aria-label="Close">{{ icon('x', size=16) }}</button>
+      </div>
+      <ul id="config-modal-list" class="config-check-list">
+        <li class="reviewers-loading">Loading checks…</li>
+      </ul>
+      <div class="comment-modal-actions">
+        <button type="button" class="comment-modal-cancel" data-close-config>Close</button>
+        <button type="button" class="comment-modal-send" id="config-modal-recheck">Recheck</button>
+      </div>
+    </div>
+  </div>
+
   <div id="reviewers-modal" class="modal" aria-hidden="true">
     <div class="modal-backdrop" data-close-reviewers></div>
     <div class="modal-body modal-body-narrow" role="dialog" aria-modal="true">
@@ -2357,6 +2397,100 @@
       }
       if (e.key === 'Escape' && reviewersModal.classList.contains('is-open')) {
         closeReviewersModal();
+      }
+    });
+
+    // === Config-status modal ================================
+    // Opens when the user clicks the header `config needed`
+    // banner. Lists every registered config check with its
+    // status, message, and remediation steps. "Recheck" re-runs
+    // the checks server-side and re-renders the list — useful
+    // after the user e.g. runs `claude login` in another tab and
+    // wants to confirm CE picked it up.
+    const configModal = document.getElementById('config-modal');
+    const configModalList = document.getElementById('config-modal-list');
+    const configModalRecheck = document.getElementById('config-modal-recheck');
+    const configBanner = document.querySelector('.app-config-needed');
+
+    function closeConfigModal() {
+      configModal.classList.remove('is-open');
+      configModal.setAttribute('aria-hidden', 'true');
+    }
+    function escapeHtml(s) {
+      return String(s ?? '').replace(/[&<>"']/g,
+        c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+    function renderConfigChecks(checks) {
+      if (!checks || !checks.length) {
+        configModalList.innerHTML =
+          '<li class="config-check-empty">No checks registered.</li>';
+        return;
+      }
+      configModalList.innerHTML = checks.map(c => {
+        const stateCls = c.ok ? 'config-check-ok' : `config-check-${c.severity || 'error'}`;
+        const stateLabel = c.ok ? 'ok' : (c.severity || 'error');
+        const steps = (c.fix_steps || []).map(s =>
+          `<li>${escapeHtml(s).replace(/`([^`]+)`/g, '<code>$1</code>')}</li>`
+        ).join('');
+        const docs = c.docs_url
+          ? `<a class="config-check-docs" href="${escapeHtml(c.docs_url)}" target="_blank" rel="noopener">docs ↗</a>`
+          : '';
+        return `
+          <li class="config-check ${stateCls}">
+            <div class="config-check-head">
+              <span class="config-check-state">${stateLabel}</span>
+              <span class="config-check-label">${escapeHtml(c.label)}</span>
+              ${docs}
+            </div>
+            <div class="config-check-message">${escapeHtml(c.message)}</div>
+            ${steps ? `<ol class="config-check-steps">${steps}</ol>` : ''}
+          </li>
+        `;
+      }).join('');
+    }
+    async function loadConfigStatus() {
+      try {
+        const r = await fetch('/admin/config-status');
+        const data = await r.json();
+        renderConfigChecks(data.checks || []);
+        // Update the header banner state inline so the user sees
+        // green-on-recheck without a full page reload.
+        if (configBanner) {
+          if (data.any_failing) {
+            const badge = configBanner.querySelector('.app-config-needed-badge');
+            if (badge) badge.textContent = String(data.fail_count);
+          } else {
+            configBanner.remove();
+          }
+        }
+      } catch (exc) {
+        configModalList.innerHTML =
+          `<li class="config-check-error">Failed to load: ${escapeHtml(exc.message || exc)}</li>`;
+      }
+    }
+    function openConfigModal() {
+      configModalList.innerHTML =
+        '<li class="reviewers-loading">Loading checks…</li>';
+      configModal.classList.add('is-open');
+      configModal.setAttribute('aria-hidden', 'false');
+      loadConfigStatus();
+    }
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('[data-open-config-modal]')) {
+        e.preventDefault();
+        openConfigModal();
+        return;
+      }
+      if (e.target.closest('[data-close-config]')) closeConfigModal();
+    });
+    configModalRecheck.addEventListener('click', () => {
+      configModalList.innerHTML =
+        '<li class="reviewers-loading">Rechecking…</li>';
+      loadConfigStatus();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && configModal.classList.contains('is-open')) {
+        closeConfigModal();
       }
     });
 
