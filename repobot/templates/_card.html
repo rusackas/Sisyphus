@@ -706,6 +706,14 @@
                           {% set editable_body = (item.triage_notes or {}).get('warn_comment')
                              or 'Converting to draft for now — please bring this back to ready once the outstanding items above are addressed. If there is no movement in a future triage sweep this may get closed; reopen as ready any time.' %}
                           {% set edit_title = 'Draft-warning comment — review before posting' %}
+                        {% elif action == 'close' %}
+                          {# PR-side close. Skill drafts close_comment;
+                             default falls back to a respectful "closing
+                             for now — reopen with fresh context" voice
+                             that's safe to post as-is on most cards. #}
+                          {% set editable_body = (item.triage_notes or {}).get('close_comment')
+                             or 'Closing this for now — happy to reopen with fresh context, a rebased branch, or a different approach. Thanks for the work; this leaves a clear marker if we want to revisit.' %}
+                          {% set edit_title = 'Close comment — review before posting' %}
                         {% endif %}
                         {% if action == 'request-reviewers' %}
                           <form method="post"

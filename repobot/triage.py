@@ -550,11 +550,11 @@ def _mechanical_review_requested_triage(item: dict) -> tuple[str, list[str]]:
     if not reasons:
         msg = "No blockers on signal check — safe to review."
         actions = ["approve-merge", "add-review-comment", "await-update",
-                   "prompt", "skip"]
+                   "close", "prompt", "skip"]
     else:
         msg = "Blockers: " + ", ".join(reasons) + "."
         actions.extend(["add-review-comment", "await-update",
-                        "prompt", "skip"])
+                        "close", "prompt", "skip"])
     if _bot_threads_resolvable(raw):
         # Insert before approve-merge / address-comments so the user
         # can clear bot threads first if approve-merge would bail
@@ -794,6 +794,17 @@ def _mechanical_generic_triage(item: dict) -> tuple[str, list[str]]:
     # Universal options always offered. `prompt` is the human escape
     # hatch; `summarize-diff` / `assess-on-worktree` give the user a
     # cheap way to ask for more context before deciding.
+    # `mark-as-draft` and `close` are universal "with-comment" escape
+    # hatches — the editorial-control modal gates the actual side-
+    # effect on a maintainer-edited body, so they're safe to surface
+    # even when the card hasn't tripped a specific signal.
+    # `mark-as-draft` is gated on `push_allowed` (the action needs
+    # write access) and `not is_draft` (no point on already-draft
+    # PRs); `close` is unconditional since the GitHub API allows
+    # the operator to close anything they can see.
+    if push_allowed and not is_draft:
+        actions.append("mark-as-draft")
+    actions.append("close")
     actions.extend(["summarize-diff", "assess-on-worktree",
                     "prompt", "skip"])
     seen: set = set()
@@ -983,9 +994,14 @@ def _mechanical_generic_issue_triage(item: dict) -> tuple[str, list[str]]:
 
     # Universal options always offered last. Convert-to-discussion
     # is offered freely — it's a soft action and a maintainer can
-    # always undo. Skip / prompt as escape hatches.
+    # always undo. `close-as-stale` is the universal "close with
+    # comment" escape hatch — the editorial-control modal gates
+    # the actual close on a maintainer-edited body, so it's safe
+    # to surface even on cards that don't trip a stale signal.
+    # Skip / prompt are the human escape hatches.
     actions.extend(["nudge-issue-author", "convert-to-discussion",
-                    "label-as-stale", "prompt", "skip"])
+                    "label-as-stale", "close-as-stale",
+                    "prompt", "skip"])
     seen: set = set()
     ordered = [a for a in actions if not (a in seen or seen.add(a))]
     return msg, ordered
