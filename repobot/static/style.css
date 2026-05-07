@@ -2497,6 +2497,322 @@ body {
   padding: 6px 0 24px;
   min-height: 60vh;
 }
+
+/* === List view ===========================================
+   Alternate cross-queue view, toggled from the boards
+   toolbar. Hidden when `body.view-kanban` is active.
+   Rows are pre-rendered server-side from `list_stream`;
+   JS handles filter / group / search / bulk-select. */
+.list-stage { display: none; padding: 12px 24px 32px; }
+body.view-list .list-stage { display: block; }
+body.view-list .boards-bar .boards-toolbar-spacer,
+body.view-list .boards-stage { display: none; }
+
+/* Toggle pill — kanban / list. Sits in the boards-toolbar
+   filters row alongside the repo dropdown. */
+.view-toggle {
+  display: inline-flex;
+  margin-left: 12px;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  background: var(--bg-card);
+}
+.view-toggle-btn {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: var(--track-eyebrow);
+  text-transform: uppercase;
+  font-weight: 600;
+  padding: 4px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-mute);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.view-toggle-btn[aria-pressed="true"] {
+  background: var(--brand);
+  color: var(--bg-card);
+}
+.view-toggle-btn:hover:not([aria-pressed="true"]) {
+  color: var(--ink);
+}
+
+/* List toolbar — search row + pill row */
+.list-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--bg);
+  padding: 8px 0 10px;
+  border-bottom: 1px dashed var(--rule);
+  margin-bottom: 8px;
+}
+.list-toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.list-toolbar-row:last-child { margin-bottom: 0; }
+.list-search {
+  flex: 1;
+  min-width: 240px;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 6px 10px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 4px;
+  background: var(--bg-card);
+  color: var(--ink);
+}
+.list-search:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+.list-result-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-mute);
+}
+
+.list-pill-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.list-pill-label {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: var(--track-eyebrow);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-right: 2px;
+}
+.list-pill {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0;
+  text-transform: lowercase;
+  font-weight: 600;
+  padding: 3px 9px;
+  border: 1px solid var(--rule);
+  background: var(--bg-card);
+  color: var(--ink-soft);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.list-pill[aria-pressed="true"] {
+  background: var(--brand);
+  color: var(--bg-card);
+  border-color: var(--brand);
+}
+.list-pill:hover:not([aria-pressed="true"]) { color: var(--ink); }
+
+.list-filter-select-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.list-filter-select {
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 3px 8px;
+  border: 1px solid var(--rule);
+  background: var(--bg-card);
+  color: var(--ink);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+
+/* Bulk-action floating bar. Shown when ≥1 row selected. */
+.list-bulk-bar {
+  position: sticky;
+  top: 88px; /* below the toolbar */
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  margin: 0 0 10px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  font-size: 12.5px;
+}
+.list-bulk-count { font-weight: 600; color: var(--accent); }
+.list-bulk-clear {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  text-transform: lowercase;
+  padding: 3px 9px;
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+.list-bulk-clear:hover { background: var(--accent); color: var(--bg-card); }
+.list-bulk-run {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  text-transform: lowercase;
+  font-weight: 700;
+  padding: 4px 12px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--bg-card);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+.list-bulk-run:disabled {
+  background: var(--bg-inset);
+  color: var(--ink-mute);
+  border-color: var(--rule);
+  cursor: not-allowed;
+}
+.list-bulk-hint {
+  font-size: 11.5px;
+  color: var(--ink-mute);
+  margin-left: auto;
+}
+
+/* List rows */
+.list-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.list-group-sep {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 6px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: var(--track-eyebrow);
+  text-transform: uppercase;
+  color: var(--ink-mute);
+}
+.list-group-sep::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px dashed var(--rule);
+}
+.list-group-sep-count {
+  font-weight: 700;
+  color: var(--ink-faint);
+}
+.list-row {
+  display: grid;
+  grid-template-columns: 28px 22px 70px 1fr 130px 120px 100px 130px;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--rule);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+.list-row:hover { background: var(--bg-inset); }
+.list-row.is-selected { background: var(--accent-soft); }
+.list-row[hidden] { display: none; }
+
+/* Left rail color by attention rank — same vocabulary as the
+   kanban cards' top accent. */
+.list-row-rank-needs_human { box-shadow: inset 3px 0 0 var(--danger); }
+.list-row-rank-interrupted { box-shadow: inset 3px 0 0 var(--warn); }
+.list-row-rank-error       { box-shadow: inset 3px 0 0 var(--danger); }
+.list-row-rank-verdict     { box-shadow: inset 3px 0 0 var(--accent); }
+.list-row-rank-idle_session{ box-shadow: inset 3px 0 0 var(--warn); }
+.list-row-rank-running     { box-shadow: inset 3px 0 0 var(--accent); }
+.list-row-rank-triaging    { box-shadow: inset 3px 0 0 var(--ink-faint); }
+.list-row-rank-awaiting    { box-shadow: inset 3px 0 0 var(--ink-faint); }
+.list-row-rank-done        { box-shadow: inset 3px 0 0 var(--ok); opacity: 0.7; }
+
+.list-row-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.list-row-checkbox { cursor: pointer; }
+.list-row-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ok);
+}
+.list-row-icon-issue { color: var(--ok); }
+.list-row-icon-pr { color: var(--ok); }
+.list-row-icon-draft { color: var(--ink-mute); }
+.list-row-num {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--brand);
+  text-decoration: none;
+  font-weight: 600;
+}
+.list-row-num:hover { text-decoration: underline; }
+.list-row-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
+}
+.list-row-author,
+.list-row-repo {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-mute);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.list-row-state {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: var(--track-eyebrow);
+  text-transform: uppercase;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--rule-strong);
+  background: var(--bg-card);
+  color: var(--ink-soft);
+  text-align: center;
+  white-space: nowrap;
+}
+.list-row-action {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0;
+  text-transform: lowercase;
+  font-weight: 600;
+  padding: 3px 9px;
+  border: 1px solid var(--brand);
+  background: var(--bg-card);
+  color: var(--brand);
+  border-radius: var(--radius-pill);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.list-row-action-empty {
+  border-color: var(--rule);
+  color: var(--ink-faint);
+  background: transparent;
+}
+.list-empty {
+  padding: 40px;
+  text-align: center;
+  color: var(--ink-mute);
+  font-size: 13px;
+}
 .boards-reel {
   display: flex;
   align-items: flex-start;

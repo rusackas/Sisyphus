@@ -355,6 +355,22 @@
             {% endfor %}
           </select>
         </label>
+        {# Kanban / list view toggle. Persists choice to localStorage
+           so the user lands back on whichever view they prefer. The
+           list view is rendered hidden below the boards-stage; the
+           JS toggles `body.view-list` to swap which is visible. #}
+        <div class="view-toggle" role="tablist" aria-label="View">
+          <button type="button" class="view-toggle-btn"
+                  data-view="kanban" aria-pressed="true"
+                  title="Kanban — one full board at a time, queue tabs across the top.">
+            kanban
+          </button>
+          <button type="button" class="view-toggle-btn"
+                  data-view="list" aria-pressed="false"
+                  title="List — every item across every queue in one scrollable stream, with grouping / filtering / search / bulk actions.">
+            list
+          </button>
+        </div>
       </div>
 
       <div class="boards-toolbar-spacer"></div>
@@ -562,6 +578,134 @@
           </div>
         </div>
       </section>
+    </div>
+  </section>
+
+  {# === List view — alternate cross-queue stream =================
+     Toggleable from the header; hidden when `body.view-kanban` is
+     active, shown when `body.view-list`. Server pre-renders every
+     row from `list_stream` (annotated with rank, queue, repo,
+     primary action). Client-side JS handles grouping / repo
+     filter / type filter / state filter / full-text search / bulk
+     select. Click anywhere on a row (outside the checkbox or
+     primary-action button) opens the same PR / issue modal the
+     kanban cards open. #}
+  <section class="list-stage" id="list-stage" aria-label="List view"
+           {% if not list_stream %}data-list-empty="1"{% endif %}>
+    <div class="list-toolbar">
+      <div class="list-toolbar-row list-toolbar-row-search">
+        <input type="search"
+               id="list-search"
+               class="list-search"
+               placeholder="Search title / number / author…"
+               aria-label="Search list"
+               autocomplete="off">
+        <span class="list-result-count" id="list-result-count"></span>
+      </div>
+      <div class="list-toolbar-row list-toolbar-row-pills">
+        <div class="list-pill-group" role="tablist" aria-label="Group by">
+          <span class="list-pill-label">group</span>
+          <button type="button" class="list-pill" data-group="none"   aria-pressed="true">none</button>
+          <button type="button" class="list-pill" data-group="state"  aria-pressed="false">state</button>
+          <button type="button" class="list-pill" data-group="queue"  aria-pressed="false">queue</button>
+          <button type="button" class="list-pill" data-group="repo"   aria-pressed="false">repo</button>
+          <button type="button" class="list-pill" data-group="type"   aria-pressed="false">type</button>
+          <button type="button" class="list-pill" data-group="action" aria-pressed="false">action</button>
+        </div>
+        <div class="list-pill-group" role="tablist" aria-label="Filter type">
+          <span class="list-pill-label">type</span>
+          <button type="button" class="list-pill" data-filter-type="all" aria-pressed="true">all</button>
+          <button type="button" class="list-pill" data-filter-type="pr"  aria-pressed="false">PRs</button>
+          <button type="button" class="list-pill" data-filter-type="issue" aria-pressed="false">issues</button>
+        </div>
+        <label class="list-filter-select-wrap">
+          <span class="list-pill-label">repo</span>
+          <select id="list-filter-repo" class="list-filter-select"
+                  aria-label="Filter list by repo">
+            <option value="">all repos</option>
+            {% for r in repos %}
+              <option value="{{ r.id }}">{{ r.display_name or r.slug }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+    </div>
+
+    {# Floating bulk-action bar — only visible when ≥1 row selected.
+       Shows count + the action that can be run on the whole
+       selection (only enabled when every selected row shares the
+       same primary action; otherwise disabled with an explanation
+       tooltip). Click → opens the bulk-action modal. #}
+    <div class="list-bulk-bar" id="list-bulk-bar" hidden>
+      <span class="list-bulk-count">
+        <span id="list-bulk-count-num">0</span> selected
+      </span>
+      <button type="button" class="list-bulk-clear" id="list-bulk-clear">clear</button>
+      <button type="button" class="list-bulk-run" id="list-bulk-run" disabled>
+        Run on selection
+      </button>
+      <span class="list-bulk-hint" id="list-bulk-hint"></span>
+    </div>
+
+    {# The list itself. Rows are pre-rendered server-side; JS
+       hides/shows + injects group separators on the fly. Each row
+       carries data-* attributes for filter / group / search. #}
+    <ul class="list-rows" id="list-rows" role="list">
+      {% for it in list_stream %}
+        {% set _is_draft = (it.raw or {}).get('isDraft') %}
+        {% set _icon =
+              'issue-opened' if it._kind == 'issue' else
+              'git-pull-request-draft' if _is_draft else
+              'git-pull-request' %}
+        {% set _state_class = (it.state or '') | lower | replace(' ', '-') %}
+        {# Build a search-haystack lower-cased blob so JS filtering
+           is one .indexOf() per row. Title + number + author + repo. #}
+        {% set _search = (it.title or '') ~ ' #' ~ (it.number or '')
+                         ~ ' @' ~ (it._author_login or '')
+                         ~ ' ' ~ (it._repo_id or '')
+                         ~ ' ' ~ (it._queue_title or '') %}
+        <li class="list-row list-row-rank-{{ it._rank_name }}"
+            data-queue-id="{{ it._queue_id }}"
+            data-item-id="{{ it.id }}"
+            data-state="{{ it.state or '' }}"
+            data-state-label="{{ it.state or '—' }}"
+            data-queue-label="{{ it._queue_title }}"
+            data-repo-id="{{ it._repo_id }}"
+            data-repo-label="{{ it._repo_name }}"
+            data-kind="{{ it._kind }}"
+            data-action="{{ it._primary_action }}"
+            data-rank="{{ it._rank_name }}"
+            data-search="{{ _search | lower }}"
+            data-drawer-url="/queues/{{ it._queue_id }}/items/{{ it.id }}/drawer"
+            data-pr-number="{{ it.number }}"
+            data-pr-title="{{ it.title }}"
+            data-pr-url="{{ it.url }}">
+          <label class="list-row-check">
+            <input type="checkbox" class="list-row-checkbox"
+                   data-list-row-checkbox
+                   aria-label="Select #{{ it.number }}">
+          </label>
+          <span class="list-row-icon list-row-icon-{{ it._kind }}{% if _is_draft %} list-row-icon-draft{% endif %}">
+            {{ icon(_icon, size=13) }}
+          </span>
+          <a class="list-row-num" href="{{ it.url }}" target="_blank" rel="noopener"
+             title="Open #{{ it.number }} on GitHub">#{{ it.number }}</a>
+          <span class="list-row-title" title="{{ it.title }}">{{ it.title }}</span>
+          {% if it._author_login %}
+            <span class="list-row-author">@{{ it._author_login }}</span>
+          {% endif %}
+          <span class="list-row-repo" title="{{ it._repo_name }}">{{ it._repo_id }}</span>
+          <span class="list-row-state list-row-state-{{ _state_class }}">{{ it.state or '—' }}</span>
+          {% if it._primary_action %}
+            <span class="list-row-action" title="Recommended next action: {{ it._primary_action }}">{{ it._primary_action }}</span>
+          {% else %}
+            <span class="list-row-action list-row-action-empty">—</span>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+    <div class="list-empty" id="list-empty" hidden>
+      No items match your filters.
     </div>
   </section>
 
@@ -1475,6 +1619,39 @@
       <div class="comment-modal-actions">
         <button type="button" class="comment-modal-cancel" data-close-feedback>Cancel</button>
         <button type="button" class="comment-modal-send" id="feedback-modal-send">Spawn task</button>
+      </div>
+    </div>
+  </div>
+
+  {# Bulk-action modal — opened from the list view's bulk bar.
+     Lists each selected item with an editable comment textarea
+     (when the action takes a comment_body). On submit, fires the
+     /admin/bulk-action endpoint which dispatches each item through
+     the existing actions.dispatch pipeline — same per-item
+     editorial-control modal as a single-card click, just batched.
+  #}
+  <div id="bulk-action-modal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-bulk-action></div>
+    <div class="modal-body modal-body-narrow" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <div>
+          <h3 id="bulk-action-modal-title">Run action on selection</h3>
+          <div class="modal-pr" id="bulk-action-modal-summary"></div>
+        </div>
+        <button type="button" class="modal-close" data-close-bulk-action
+                aria-label="Close">{{ icon('x', size=16) }}</button>
+      </div>
+      <div class="comment-modal-help" id="bulk-action-modal-help">
+        Each row below will run the selected action. Edit the
+        comment per-row before submitting; an empty body will use
+        the action's default. The submission fires sequentially —
+        check the queue board to watch them go.
+      </div>
+      <div id="bulk-action-modal-list" class="bulk-approve-list"></div>
+      <div id="bulk-action-modal-error" class="plan-modal-error"></div>
+      <div class="comment-modal-actions">
+        <button type="button" class="comment-modal-cancel" data-close-bulk-action>Cancel</button>
+        <button type="button" class="comment-modal-send" id="bulk-action-modal-send">Run</button>
       </div>
     </div>
   </div>
@@ -2399,6 +2576,388 @@
         closeReviewersModal();
       }
     });
+
+    // === List view ==========================================
+    // Cross-queue list as an alternative to the kanban. Toggle in
+    // the boards-toolbar persists to localStorage; group / type /
+    // repo / search filters are client-side; bulk-select runs the
+    // shared primary-action across selected rows via the bulk
+    // modal.
+    const VIEW_KEY = 'sisyphus.view';
+    const viewToggleBtns = document.querySelectorAll('[data-view]');
+    function applyView(view) {
+      const v = (view === 'list') ? 'list' : 'kanban';
+      document.body.classList.toggle('view-list', v === 'list');
+      document.body.classList.toggle('view-kanban', v === 'kanban');
+      viewToggleBtns.forEach(b =>
+        b.setAttribute('aria-pressed',
+          b.dataset.view === v ? 'true' : 'false'));
+      try { localStorage.setItem(VIEW_KEY, v); } catch {}
+    }
+    applyView(localStorage.getItem(VIEW_KEY) || 'kanban');
+    viewToggleBtns.forEach(b => b.addEventListener('click', () => applyView(b.dataset.view)));
+
+    const listRows = document.getElementById('list-rows');
+    const listSearch = document.getElementById('list-search');
+    const listResultCount = document.getElementById('list-result-count');
+    const listEmpty = document.getElementById('list-empty');
+    const listFilterRepo = document.getElementById('list-filter-repo');
+
+    // State + helpers
+    const listState = {
+      group: 'none',
+      type: 'all',
+      repo: '',
+      search: '',
+    };
+    function rowMatches(row) {
+      if (listState.type !== 'all' && row.dataset.kind !== listState.type) return false;
+      if (listState.repo && row.dataset.repoId !== listState.repo) return false;
+      if (listState.search) {
+        const hay = row.dataset.search || '';
+        if (!hay.includes(listState.search)) return false;
+      }
+      return true;
+    }
+    function applyListFilters() {
+      // Wipe any previously-injected group separators (we'll re-inject
+      // below if grouping is active).
+      listRows.querySelectorAll('.list-group-sep').forEach(n => n.remove());
+
+      const rows = Array.from(listRows.querySelectorAll('.list-row'));
+      let visible = 0;
+
+      // Compute which rows pass the filters.
+      const visibleRows = [];
+      rows.forEach(r => {
+        if (rowMatches(r)) {
+          r.hidden = false;
+          visibleRows.push(r);
+          visible++;
+        } else {
+          r.hidden = true;
+        }
+      });
+
+      // Grouping. Reorder visible rows by group key, then inject
+      // <li class="list-group-sep"> separators before each group.
+      if (listState.group !== 'none' && visibleRows.length) {
+        const keyOf = (r) => {
+          switch (listState.group) {
+            case 'state':  return r.dataset.stateLabel || '—';
+            case 'queue':  return r.dataset.queueLabel || '—';
+            case 'repo':   return r.dataset.repoLabel || '—';
+            case 'type':   return r.dataset.kind === 'issue' ? 'Issues' : 'PRs';
+            case 'action': return r.dataset.action || '(no action)';
+            default:       return '';
+          }
+        };
+        const groups = new Map();
+        visibleRows.forEach(r => {
+          const k = keyOf(r);
+          if (!groups.has(k)) groups.set(k, []);
+          groups.get(k).push(r);
+        });
+        const sortedKeys = Array.from(groups.keys()).sort();
+        const frag = document.createDocumentFragment();
+        sortedKeys.forEach(k => {
+          const sep = document.createElement('li');
+          sep.className = 'list-group-sep';
+          sep.innerHTML =
+            `<span class="list-group-sep-name">${escapeHtml(k)}</span>` +
+            `<span class="list-group-sep-count">${groups.get(k).length}</span>`;
+          frag.appendChild(sep);
+          groups.get(k).forEach(r => frag.appendChild(r));
+        });
+        listRows.appendChild(frag);
+      }
+
+      // Empty-state surfacing + count readout.
+      listEmpty.hidden = visible !== 0;
+      listResultCount.textContent =
+        visible === rows.length
+          ? `${visible} item${visible === 1 ? '' : 's'}`
+          : `${visible} of ${rows.length}`;
+      updateBulkBar();
+    }
+
+    // Group / filter / search wiring
+    document.querySelectorAll('[data-group]').forEach(b => {
+      b.addEventListener('click', () => {
+        document.querySelectorAll('[data-group]').forEach(x =>
+          x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+        listState.group = b.dataset.group;
+        applyListFilters();
+      });
+    });
+    document.querySelectorAll('[data-filter-type]').forEach(b => {
+      b.addEventListener('click', () => {
+        document.querySelectorAll('[data-filter-type]').forEach(x =>
+          x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+        listState.type = b.dataset.filterType;
+        applyListFilters();
+      });
+    });
+    listFilterRepo.addEventListener('change', () => {
+      listState.repo = listFilterRepo.value;
+      applyListFilters();
+    });
+    let searchTimer = null;
+    listSearch.addEventListener('input', () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => {
+        listState.search = listSearch.value.trim().toLowerCase();
+        applyListFilters();
+      }, 60);
+    });
+
+    // Click-row → open the same modal the kanban cards open. We
+    // dispatch an event the existing drawer-open handler listens
+    // for, since the URL is the same shape (.../drawer).
+    listRows.addEventListener('click', (e) => {
+      const row = e.target.closest('.list-row');
+      if (!row) return;
+      // Don't intercept clicks on the checkbox, the GitHub-link
+      // number, or the primary-action button — those have their
+      // own behavior.
+      if (e.target.closest('[data-list-row-checkbox], .list-row-num, .list-row-action')) return;
+      const url = row.dataset.drawerUrl;
+      if (!url) return;
+      e.preventDefault();
+      // Reuse the existing drawer/modal open path. The kanban
+      // cards trigger this via an HTMX-boosted link; here we do
+      // it manually.
+      const drawer = document.getElementById('drawer');
+      const drawerContent = document.getElementById('drawer-content');
+      if (!drawer || !drawerContent) return;
+      drawer.classList.add('is-open');
+      drawer.setAttribute('aria-hidden', 'false');
+      drawerContent.innerHTML = '<div class="drawer-loading">Loading…</div>';
+      fetch(url, { headers: { 'X-Requested-With': 'fetch' } })
+        .then(r => r.text())
+        .then(html => { drawerContent.innerHTML = html; })
+        .catch(err => {
+          drawerContent.innerHTML =
+            `<div class="drawer-error">Failed to load: ${escapeHtml(err.message || err)}</div>`;
+        });
+    });
+
+    // Bulk select. Track selected rows; enable bulk-run only when
+    // every selected row shares the same data-action (otherwise
+    // there's no single action to bulk-execute).
+    const listBulkBar = document.getElementById('list-bulk-bar');
+    const listBulkCountNum = document.getElementById('list-bulk-count-num');
+    const listBulkRun = document.getElementById('list-bulk-run');
+    const listBulkClear = document.getElementById('list-bulk-clear');
+    const listBulkHint = document.getElementById('list-bulk-hint');
+    function getSelectedRows() {
+      return Array.from(listRows.querySelectorAll(
+        '.list-row .list-row-checkbox:checked'))
+        .map(cb => cb.closest('.list-row'))
+        .filter(r => r && !r.hidden);
+    }
+    function updateBulkBar() {
+      const selected = getSelectedRows();
+      // Reset visual state on rows: any unchecked row loses .is-selected.
+      listRows.querySelectorAll('.list-row.is-selected').forEach(r => {
+        const cb = r.querySelector('.list-row-checkbox');
+        if (!cb || !cb.checked) r.classList.remove('is-selected');
+      });
+      selected.forEach(r => r.classList.add('is-selected'));
+
+      if (!selected.length) {
+        listBulkBar.hidden = true;
+        return;
+      }
+      listBulkBar.hidden = false;
+      listBulkCountNum.textContent = String(selected.length);
+      const actions = new Set(selected.map(r => r.dataset.action || ''));
+      actions.delete('');
+      if (actions.size === 1) {
+        const a = Array.from(actions)[0];
+        listBulkRun.disabled = false;
+        listBulkRun.textContent = `Run ${a} on ${selected.length}`;
+        listBulkHint.textContent = '';
+      } else if (actions.size === 0) {
+        listBulkRun.disabled = true;
+        listBulkRun.textContent = 'Run on selection';
+        listBulkHint.textContent = 'Selected rows have no recommended action.';
+      } else {
+        listBulkRun.disabled = true;
+        listBulkRun.textContent = 'Run on selection';
+        listBulkHint.textContent =
+          `Mixed actions selected (${Array.from(actions).join(', ')}). Group by action and pick a single bucket to bulk-run.`;
+      }
+    }
+    listRows.addEventListener('change', (e) => {
+      if (e.target.matches('[data-list-row-checkbox]')) updateBulkBar();
+    });
+    listBulkClear.addEventListener('click', () => {
+      listRows.querySelectorAll('.list-row-checkbox:checked')
+        .forEach(cb => { cb.checked = false; });
+      updateBulkBar();
+    });
+    listBulkRun.addEventListener('click', () => {
+      const selected = getSelectedRows();
+      if (!selected.length) return;
+      const action = selected[0].dataset.action;
+      const items = selected.map(r => ({
+        queue_id: r.dataset.queueId,
+        item_id: parseInt(r.dataset.itemId, 10),
+        number: r.dataset.prNumber,
+        title: r.dataset.prTitle,
+        url: r.dataset.prUrl,
+      }));
+      openBulkActionModal(action, items);
+    });
+
+    // Bulk action modal — generalization of the existing bulk-
+    // approve modal, but works for any action. Actions that take
+    // a comment_body get a per-item editable textarea pre-filled
+    // from server-side data (fetched from the action endpoint
+    // when needed); actions without comment_body show a plain
+    // confirmation list.
+    const ACTIONS_WITH_COMMENT_BODY = new Set([
+      'approve-merge', 'close', 'close-as-stale', 'mark-as-draft',
+      'nudge-author', 'nudge-issue-author', 'ping-reviewers',
+      'add-review-comment', 'request-changes-review',
+    ]);
+    // For actions where the comment is a fixed-string (no
+    // per-item customization), show just the confirmation count.
+    const ACTIONS_FIXED_STRING = {
+      'dependabot-rebase':   '@dependabot rebase',
+      'dependabot-recreate': '@dependabot recreate',
+    };
+    const bulkActionModal = document.getElementById('bulk-action-modal');
+    const bulkActionModalTitle = document.getElementById('bulk-action-modal-title');
+    const bulkActionModalSummary = document.getElementById('bulk-action-modal-summary');
+    const bulkActionModalHelp = document.getElementById('bulk-action-modal-help');
+    const bulkActionModalList = document.getElementById('bulk-action-modal-list');
+    const bulkActionModalError = document.getElementById('bulk-action-modal-error');
+    const bulkActionModalSend = document.getElementById('bulk-action-modal-send');
+    let bulkActionPending = null;
+
+    function closeBulkActionModal() {
+      bulkActionModal.classList.remove('is-open');
+      bulkActionModal.setAttribute('aria-hidden', 'true');
+      bulkActionPending = null;
+    }
+    function openBulkActionModal(action, items) {
+      bulkActionPending = { action, items };
+      bulkActionModalError.textContent = '';
+      bulkActionModalSend.disabled = false;
+      bulkActionModalTitle.textContent = `Run ${action} on ${items.length} items`;
+      bulkActionModalSummary.textContent =
+        `${items.length} ${items.length === 1 ? 'item' : 'items'} selected`;
+      bulkActionModalSend.textContent = `Run ${action} on ${items.length}`;
+
+      const wantsBody = ACTIONS_WITH_COMMENT_BODY.has(action);
+      const fixed = ACTIONS_FIXED_STRING[action];
+
+      if (fixed) {
+        bulkActionModalHelp.textContent =
+          `This will post the literal comment "${fixed}" on each item below, then run the action. No per-row customization.`;
+      } else if (wantsBody) {
+        bulkActionModalHelp.textContent =
+          'Each row below will post its comment body, then run the action. Edit any row\'s comment before submitting; empty bodies will use the action default.';
+      } else {
+        bulkActionModalHelp.textContent =
+          `This will run ${action} on each item below sequentially. The action has no editable comment.`;
+      }
+
+      bulkActionModalList.innerHTML = items.map((it, i) => {
+        const head = `
+          <div class="bulk-approve-head">
+            <a class="bulk-approve-pr" href="${escapeHtml(it.url || '#')}"
+               target="_blank" rel="noopener"
+               title="Open #${escapeHtml(it.number)} on GitHub">
+              #${escapeHtml(it.number)} — ${escapeHtml(it.title || '')}
+            </a>
+          </div>`;
+        if (wantsBody) {
+          // Default comment is empty here; the action endpoint
+          // server-side falls back to its own default if blank.
+          return `
+            <div class="bulk-approve-row" data-bulk-row="${i}"
+                 data-queue-id="${escapeHtml(it.queue_id)}"
+                 data-item-id="${escapeHtml(String(it.item_id))}">
+              ${head}
+              <textarea class="bulk-approve-comment"
+                        data-bulk-comment
+                        rows="2"
+                        placeholder="(use action default — leave blank or write a custom body)"></textarea>
+            </div>`;
+        }
+        return `
+          <div class="bulk-approve-row" data-bulk-row="${i}"
+               data-queue-id="${escapeHtml(it.queue_id)}"
+               data-item-id="${escapeHtml(String(it.item_id))}">
+            ${head}
+          </div>`;
+      }).join('');
+
+      bulkActionModal.classList.add('is-open');
+      bulkActionModal.setAttribute('aria-hidden', 'false');
+    }
+
+    bulkActionModalSend.addEventListener('click', async () => {
+      if (!bulkActionPending) return;
+      const { action } = bulkActionPending;
+      const rows = Array.from(bulkActionModalList.querySelectorAll('[data-bulk-row]'));
+      const payload = rows.map(r => {
+        const ta = r.querySelector('[data-bulk-comment]');
+        return {
+          queue_id: r.dataset.queueId,
+          item_id: parseInt(r.dataset.itemId, 10),
+          comment_body: ta ? ta.value : '',
+        };
+      });
+      bulkActionModalSend.disabled = true;
+      bulkActionModalSend.textContent = 'Running…';
+      bulkActionModalError.textContent = '';
+      try {
+        const fd = new FormData();
+        fd.append('action_id', action);
+        payload.forEach((p) => {
+          fd.append('queue_id', p.queue_id);
+          fd.append('item_id', String(p.item_id));
+          fd.append('comment_body', p.comment_body);
+        });
+        const r = await fetch('/admin/bulk-action', {
+          method: 'POST',
+          body: fd,
+        });
+        if (!r.ok) {
+          const text = await r.text();
+          throw new Error(text || `HTTP ${r.status}`);
+        }
+        const data = await r.json();
+        closeBulkActionModal();
+        // Clear selection + give a beat for the kanban to refresh.
+        listRows.querySelectorAll('.list-row-checkbox:checked').forEach(cb => { cb.checked = false; });
+        updateBulkBar();
+        // Briefly pulse the result count so the user sees something happened.
+        listResultCount.textContent =
+          `Dispatched ${data.fired || 0}${data.errors && data.errors.length ? ` (${data.errors.length} failed)` : ''}. Reload to see updated cards.`;
+        setTimeout(() => applyListFilters(), 2000);
+      } catch (exc) {
+        bulkActionModalError.textContent =
+          `Failed: ${exc.message || exc}`;
+        bulkActionModalSend.disabled = false;
+        bulkActionModalSend.textContent = `Run ${action} on ${payload.length}`;
+      }
+    });
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('[data-close-bulk-action]')) closeBulkActionModal();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && bulkActionModal.classList.contains('is-open')) {
+        closeBulkActionModal();
+      }
+    });
+
+    // Initial state — paint result count, hide empty if any.
+    applyListFilters();
 
     // === Config-status modal ================================
     // Opens when the user clicks the header `config needed`

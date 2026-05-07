@@ -450,6 +450,40 @@ def index(request: Request):
                 n += 1
         queue_attention_counts[qid] = n
 
+    # Cross-queue stream for the list view. Same `inbox.build_stream`
+    # the old inbox row UI used, attention-ranked + recency-sorted.
+    # Annotated client-side with primary_action (computed below) so
+    # the list row can render the same one-click button the kanban
+    # card has, AND the JS can bulk-select by primary action.
+    list_stream = _inbox.attention_stream(queues_cfg, state,
+                                           include_done=True)
+    repo_id_by_queue = {q["id"]: github.queue_repo_id(q)
+                        for q in queues_cfg}
+    repo_by_id = {r["id"]: r for r in github.list_repos()}
+    _NOPRIM = {"prompt", "skip", "await-update", "summarize-diff",
+               "assess-on-worktree"}
+    for it in list_stream:
+        # Pick the first non-meta action as the primary. Same
+        # heuristic the old inbox row used.
+        actions_list = it.get("actions") or []
+        primary = next((a for a in actions_list if a not in _NOPRIM), "")
+        it["_primary_action"] = primary
+        rid = repo_id_by_queue.get(it.get("_queue_id"), "")
+        it["_repo_id"] = rid
+        it["_repo_name"] = (repo_by_id.get(rid, {}).get("display_name")
+                            or repo_by_id.get(rid, {}).get("slug")
+                            or rid)
+        # Type for the row icon + filter pill: issue vs PR. Issues
+        # have no `headRefName` and the queue kind is "issue"; PRs
+        # are everything else. Stash on the item so JS can filter
+        # on it without re-deriving.
+        qcfg = next((q for q in queues_cfg
+                     if q["id"] == it.get("_queue_id")), {})
+        it["_kind"] = "issue" if qcfg.get("kind") == "issue" else "pr"
+        # Author login (for the row + search index).
+        author = (it.get("raw") or {}).get("author") or {}
+        it["_author_login"] = author.get("login", "") if isinstance(author, dict) else ""
+
     return templates.TemplateResponse(
         request,
         "index.html",
@@ -469,6 +503,7 @@ def index(request: Request):
                                for q in queues_cfg},
             "triage_skills": _list_triage_skills(),
             "config_status": _config_checks.summary(),
+            "list_stream": list_stream,
         },
     )
 
@@ -2278,6 +2313,52 @@ def spawn_feedback_task(request: Request, queue_id: str, item_id: int,
 # the user can merge a PR via the tool and immediately consume the
 # new code. `git pull --ff-only` so local edits abort the update
 # instead of being silently overwritten.
+@app.post("/admin/bulk-action", response_class=JSONResponse)
+async def admin_bulk_action(action_id: str = Form(...),
+                             queue_id: list[str] = Form(default=[]),
+                             item_id: list[int] = Form(default=[]),
+                             comment_body: list[str] = Form(default=[])):
+    """Generic bulk-dispatch endpoint used by the list view's bulk-
+    select bar. Fires the same action_id for each (queue_id,
+    item_id) pair, threading the per-row comment_body through as
+    `extra_context.comment_body` so the action skill can use it
+    verbatim — same path as a single-card click that goes through
+    the comment-edit modal.
+
+    Editorial-control invariant intact: the per-row textareas in
+    the bulk modal serve as the comment-edit step. The user has
+    already reviewed each body before submitting; we just dispatch
+    them sequentially.
+    """
+    if not queue_id or not item_id:
+        raise HTTPException(status_code=400, detail="no items selected")
+    n = len(queue_id)
+    if len(item_id) != n or (comment_body and len(comment_body) != n):
+        raise HTTPException(
+            status_code=400,
+            detail="queue_id / item_id / comment_body lists must align",
+        )
+    bodies = comment_body if comment_body else [""] * n
+
+    fired: list[dict] = []
+    errors: list[str] = []
+    from .actions import dispatch as _dispatch_action
+    for qid, iid, body in zip(queue_id, item_id, bodies):
+        try:
+            extra = {"comment_body": (body or "").strip()} \
+                if (body or "").strip() else None
+            await asyncio.to_thread(
+                _dispatch_action, qid, iid, action_id, extra)
+            fired.append({"queue_id": qid, "item_id": iid})
+        except Exception as exc:
+            errors.append(f"{qid}/#{iid}: {exc}")
+    return JSONResponse({
+        "action_id": action_id,
+        "fired": len(fired),
+        "errors": errors,
+    })
+
+
 @app.get("/admin/config-status", response_class=JSONResponse)
 def admin_config_status():
     """Run every registered config check and return a summary. Used
